@@ -1,3 +1,13 @@
 *.o
 *.a
+cpanel
+sdec-cli
 ezio-cli
+diag
+enable_lpt
+findlpt
+portscan
+serial_test
+step_test
+contrast_test
+simple
