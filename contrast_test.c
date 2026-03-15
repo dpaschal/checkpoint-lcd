@@ -116,6 +116,12 @@ int main(void) {
 #ifdef __FreeBSD__
     int io_fd = open("/dev/io", O_RDWR);
     if (io_fd < 0) { perror("open /dev/io"); return 1; }
+#else
+    if (ioperm(0x2E, 2, 1) != 0 || ioperm(0x43, 1, 1) != 0 ||
+        ioperm(0x42, 1, 1) != 0 || ioperm(0x61, 1, 1) != 0 ||
+        ioperm(0x378, 3, 1) != 0) {
+        perror("ioperm"); return 1;
+    }
 #endif
 
     /* Enable LPT first */

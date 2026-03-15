@@ -16,7 +16,7 @@
 #include <termios.h>
 
 static cpanel_t lcd;
-static volatile int running = 1;
+static volatile sig_atomic_t running = 1;
 
 static void sighandler(int sig) { (void)sig; running = 0; }
 
@@ -327,8 +327,8 @@ int main(int argc, char **argv)
     } else if (strcmp(cmd, "raw") == 0) {
         cpanel_init(&lcd);
         for (int i = 0; i < cargc; i++) {
-            write(lcd.fd, cargv[i], strlen(cargv[i]));
-            if (i < cargc - 1) { uint8_t nl = CPANEL_NEWLINE; write(lcd.fd, &nl, 1); }
+            (void)write(lcd.fd, cargv[i], strlen(cargv[i]));
+            if (i < cargc - 1) { uint8_t nl = CPANEL_NEWLINE; (void)write(lcd.fd, &nl, 1); }
         }
         tcdrain(lcd.fd);
     } else {

@@ -2,7 +2,7 @@
 # Works on Linux (gmake) and FreeBSD (bmake/make)
 
 CC      ?= cc
-CFLAGS  ?= -O2 -Wall -std=c11 -D_DEFAULT_SOURCE
+CFLAGS  ?= -O2 -Wall -Wextra -std=c11 -D_DEFAULT_SOURCE
 
 .PHONY: all clean install
 

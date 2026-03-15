@@ -16,17 +16,17 @@
 
 /* ── Serial helpers ────────────────────────────────────────────────── */
 
-static int lcd_write(cpanel_t *ctx, const void *buf, int len)
+static int lcd_write(cpanel_t *ctx, const void *buf, size_t len)
 {
     const uint8_t *p = buf;
-    int written = 0;
+    size_t written = 0;
     while (written < len) {
-        int n = write(ctx->fd, p + written, len - written);
+        ssize_t n = write(ctx->fd, p + written, len - written);
         if (n < 0) {
             if (errno == EINTR) continue;
             return -1;
         }
-        written += n;
+        written += (size_t)n;
     }
     tcdrain(ctx->fd);
     return 0;
@@ -59,7 +59,12 @@ int cpanel_open(cpanel_t *ctx, const char *device)
     }
 
     struct termios tio;
-    tcgetattr(ctx->fd, &tio);
+    if (tcgetattr(ctx->fd, &tio) < 0) {
+        fprintf(stderr, "cpanel: tcgetattr %s: %s\n", ctx->dev, strerror(errno));
+        close(ctx->fd);
+        ctx->fd = -1;
+        return -1;
+    }
     cfmakeraw(&tio);
     cfsetispeed(&tio, B115200);
     cfsetospeed(&tio, B115200);

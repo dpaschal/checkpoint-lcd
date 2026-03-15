@@ -323,11 +323,14 @@ int ezio_fb_bmp(ezio_t *ctx, const char *bmp_path)
         return -1;
     }
 
-    /* Get pixel data offset from header */
-    uint32_t px_offset = hdr[10] | (hdr[11] << 8) | (hdr[12] << 16) | (hdr[13] << 24);
-    int32_t bmp_w = hdr[18] | (hdr[19] << 8) | (hdr[20] << 16) | (hdr[21] << 24);
-    int32_t bmp_h = hdr[22] | (hdr[23] << 8) | (hdr[24] << 16) | (hdr[25] << 24);
-    uint16_t bpp = hdr[28] | (hdr[29] << 8);
+    /* Get pixel data offset from header (cast to avoid UB on signed shift) */
+    uint32_t px_offset = (uint32_t)hdr[10] | ((uint32_t)hdr[11] << 8) |
+                         ((uint32_t)hdr[12] << 16) | ((uint32_t)hdr[13] << 24);
+    int32_t bmp_w = (int32_t)((uint32_t)hdr[18] | ((uint32_t)hdr[19] << 8) |
+                              ((uint32_t)hdr[20] << 16) | ((uint32_t)hdr[21] << 24));
+    int32_t bmp_h = (int32_t)((uint32_t)hdr[22] | ((uint32_t)hdr[23] << 8) |
+                              ((uint32_t)hdr[24] << 16) | ((uint32_t)hdr[25] << 24));
+    uint16_t bpp = (uint16_t)(hdr[28] | (hdr[29] << 8));
 
     if (bmp_w != EZIO_WIDTH || abs(bmp_h) != EZIO_HEIGHT) {
         fprintf(stderr, "ezio: %s: expected %dx%d, got %dx%d\n",
@@ -347,7 +350,12 @@ int ezio_fb_bmp(ezio_t *ctx, const char *bmp_path)
 
     /* BMP row stride: padded to 4-byte boundary */
     int stride = ((bmp_w + 31) / 32) * 4;
-    uint8_t row[32]; /* 128 / 8 = 16 bytes, stride may be up to 20 */
+    uint8_t row[32];
+    if (stride > (int)sizeof(row)) {
+        fprintf(stderr, "ezio: %s: stride %d exceeds buffer\n", bmp_path, stride);
+        fclose(f);
+        return -1;
+    }
     bool bottom_up = (bmp_h > 0);
 
     ezio_fb_clear(ctx);
@@ -463,18 +471,16 @@ int ezio_printf(ezio_t *ctx, int x, int y, const char *fmt, ...)
  * Each LED has 2 bits: bit0 = green, bit1 = red
  * LED1 = bits 0-1, LED2 = bits 2-3, LED3 = bits 4-5
  */
-static uint8_t led_state = 0;
-
 int ezio_led(ezio_t *ctx, int led, ezio_led_color_t color)
 {
     if (led < 0 || led > 2)
         return -1;
 
     int shift = led * 2;
-    led_state &= ~(0x03 << shift);
-    led_state |= ((uint8_t)color & 0x03) << shift;
+    ctx->led_state &= ~(0x03 << shift);
+    ctx->led_state |= ((uint8_t)color & 0x03) << shift;
 
-    uint8_t cmd[3] = { EZIO_CMD_INIT_ESC, 0x4C, led_state };
+    uint8_t cmd[3] = { EZIO_CMD_INIT_ESC, 0x4C, ctx->led_state };
     return serial_write(ctx, cmd, 3);
 }
 

@@ -67,6 +67,7 @@ typedef struct {
     char          dev[128];
     uint8_t       fb[EZIO_FB_SIZE];   /* local framebuffer */
     bool          gfx_mode;
+    uint8_t       led_state;          /* current LED color bits */
 } ezio_t;
 
 /* Core API */
