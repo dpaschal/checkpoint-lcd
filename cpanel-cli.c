@@ -317,7 +317,7 @@ static int cmd_monitor(void)
     int page = 0;
     int num_pages = 5;
     time_t last_auto = time(NULL);
-    int auto_cycle = 1;
+    int auto_cycle = 0;
     time_t last_input = 0;
 
     while (running) {
