@@ -95,20 +95,21 @@ int cpanel_init(cpanel_t *ctx)
     lcd_byte(ctx, CPANEL_HOME);
     usleep(50000);
     memset(ctx->buf, ' ', sizeof(ctx->buf));
-    for (int r = 0; r < CPANEL_ROWS; r++)
+    memset(ctx->prev, 0, sizeof(ctx->prev));
+    for (int r = 0; r < CPANEL_ROWS; r++) {
         ctx->buf[r][CPANEL_COLS] = '\0';
+        ctx->prev[r][CPANEL_COLS] = '\0';
+    }
+    ctx->dirty = 1;
     return 0;
 }
 
 int cpanel_clear(cpanel_t *ctx)
 {
-    lcd_byte(ctx, CPANEL_CLEAR);
-    usleep(100000);
-    lcd_byte(ctx, CPANEL_HOME);
-    usleep(50000);
     memset(ctx->buf, ' ', sizeof(ctx->buf));
     for (int r = 0; r < CPANEL_ROWS; r++)
         ctx->buf[r][CPANEL_COLS] = '\0';
+    ctx->dirty = 1;
     return 0;
 }
 
@@ -137,16 +138,38 @@ int cpanel_printf(cpanel_t *ctx, int row, const char *fmt, ...)
 
 int cpanel_flush(cpanel_t *ctx)
 {
-    lcd_byte(ctx, CPANEL_CLEAR);
-    usleep(50000);
-    lcd_byte(ctx, CPANEL_HOME);
-    usleep(20000);
+    if (ctx->dirty) {
+        /* Full redraw — clear and write everything */
+        lcd_byte(ctx, CPANEL_CLEAR);
+        usleep(50000);
+        lcd_byte(ctx, CPANEL_HOME);
+        usleep(20000);
+        for (int r = 0; r < CPANEL_ROWS; r++) {
+            lcd_write(ctx, ctx->buf[r], CPANEL_COLS);
+            if (r < CPANEL_ROWS - 1)
+                lcd_byte(ctx, CPANEL_NEWLINE);
+            usleep(5000);
+        }
+        memcpy(ctx->prev, ctx->buf, sizeof(ctx->prev));
+        ctx->dirty = 0;
+        return 0;
+    }
 
+    /* Incremental update — only rewrite changed rows */
     for (int r = 0; r < CPANEL_ROWS; r++) {
-        lcd_write(ctx, ctx->buf[r], CPANEL_COLS);
-        if (r < CPANEL_ROWS - 1)
-            lcd_byte(ctx, CPANEL_NEWLINE);
-        usleep(5000);
+        if (memcmp(ctx->buf[r], ctx->prev[r], CPANEL_COLS) != 0) {
+            /* Position cursor: home then newlines to reach row */
+            lcd_byte(ctx, CPANEL_HOME);
+            usleep(5000);
+            for (int i = 0; i < r; i++) {
+                lcd_byte(ctx, CPANEL_NEWLINE);
+                usleep(2000);
+            }
+            /* Overwrite the full row */
+            lcd_write(ctx, ctx->buf[r], CPANEL_COLS);
+            usleep(3000);
+            memcpy(ctx->prev[r], ctx->buf[r], CPANEL_COLS);
+        }
     }
     return 0;
 }

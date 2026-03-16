@@ -44,6 +44,8 @@ typedef struct {
     int   fd;
     char  dev[128];
     char  buf[CPANEL_ROWS][CPANEL_COLS + 1];
+    char  prev[CPANEL_ROWS][CPANEL_COLS + 1];
+    int   dirty;  /* 1 = full redraw needed */
 } cpanel_t;
 
 /* Core */

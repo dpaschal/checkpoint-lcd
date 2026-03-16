@@ -207,6 +207,7 @@ static int cmd_monitor(void)
         if (now - last_auto >= 8) {
             page = (page + 1) % num_pages;
             last_auto = now;
+            lcd.dirty = 1;
         }
 
         /* Check buttons (non-blocking, 200ms) */
@@ -228,10 +229,11 @@ static int cmd_monitor(void)
             }
             /* Drain repeat keypresses */
             while (cpanel_btn_poll(&lcd, 100)) ;
+            /* Force full redraw on page change */
+            lcd.dirty = 1;
         }
 
-        cpanel_clear(&lcd);
-
+        /* Build new frame — cpanel_puts just writes to buffer */
         switch (page) {
         case 0: {
             struct utsname u;
