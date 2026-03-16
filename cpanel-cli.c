@@ -317,20 +317,30 @@ static int cmd_monitor(void)
     int page = 0;
     int num_pages = 5;
     time_t last_auto = time(NULL);
+    int auto_cycle = 1;
+    time_t last_input = 0;
 
     while (running) {
         time_t now = time(NULL);
         struct tm *tm = localtime(&now);
 
-        if (now - last_auto >= 8) {
+        /* Auto-cycle only if no recent button input */
+        if (auto_cycle && now - last_auto >= 8) {
             page = (page + 1) % num_pages;
             last_auto = now;
             lcd.dirty = 1;
         }
 
+        /* Resume auto-cycle after 30 seconds of no input */
+        if (!auto_cycle && last_input && now - last_input >= 30) {
+            auto_cycle = 1;
+            last_auto = now;
+        }
+
         int btn = cpanel_btn_poll(&lcd, 200);
         if (btn) {
-            last_auto = now;
+            auto_cycle = 0;  /* stop auto-cycling on any button */
+            last_input = now;
             switch (btn) {
             case CPANEL_BTN_RIGHT:
             case CPANEL_BTN_DOWN:
@@ -344,7 +354,7 @@ static int cmd_monitor(void)
                 running = 0;
                 break;
             }
-            while (cpanel_btn_poll(&lcd, 100)) ;
+            while (cpanel_btn_poll(&lcd, 150)) ;
             lcd.dirty = 1;
         }
 

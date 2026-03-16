@@ -138,39 +138,42 @@ int cpanel_printf(cpanel_t *ctx, int row, const char *fmt, ...)
 
 int cpanel_flush(cpanel_t *ctx)
 {
+    /*
+     * Overwrite in place: home cursor, then write all 8 rows.
+     * No clear command — avoids flicker. Each row is exactly 16 chars
+     * (padded by cpanel_puts) so we overwrite the entire screen.
+     */
+    int changed = ctx->dirty;
+    if (!changed) {
+        for (int r = 0; r < CPANEL_ROWS; r++) {
+            if (memcmp(ctx->buf[r], ctx->prev[r], CPANEL_COLS) != 0) {
+                changed = 1;
+                break;
+            }
+        }
+    }
+    if (!changed) return 0;
+
+    /* Full ESC @ reset only on first frame or page change (dirty=1).
+     * Regular updates just home the cursor and overwrite in place. */
     if (ctx->dirty) {
-        /* Full redraw — clear and write everything */
+        lcd_cmd2(ctx, CPANEL_ESC, CPANEL_INIT);
+        usleep(100000);
         lcd_byte(ctx, CPANEL_CLEAR);
         usleep(50000);
-        lcd_byte(ctx, CPANEL_HOME);
-        usleep(20000);
-        for (int r = 0; r < CPANEL_ROWS; r++) {
-            lcd_write(ctx, ctx->buf[r], CPANEL_COLS);
-            if (r < CPANEL_ROWS - 1)
-                lcd_byte(ctx, CPANEL_NEWLINE);
-            usleep(5000);
-        }
-        memcpy(ctx->prev, ctx->buf, sizeof(ctx->prev));
-        ctx->dirty = 0;
-        return 0;
+    }
+    lcd_byte(ctx, CPANEL_HOME);
+    usleep(10000);
+
+    /* Write all rows — NO newlines, rely on auto-wrap at 21 chars.
+     * Using 0x0A causes panel-interleaving on the EZIO-G500. */
+    for (int r = 0; r < CPANEL_ROWS; r++) {
+        lcd_write(ctx, ctx->buf[r], CPANEL_COLS);
+        usleep(2000);
     }
 
-    /* Incremental update — only rewrite changed rows */
-    for (int r = 0; r < CPANEL_ROWS; r++) {
-        if (memcmp(ctx->buf[r], ctx->prev[r], CPANEL_COLS) != 0) {
-            /* Position cursor: home then newlines to reach row */
-            lcd_byte(ctx, CPANEL_HOME);
-            usleep(5000);
-            for (int i = 0; i < r; i++) {
-                lcd_byte(ctx, CPANEL_NEWLINE);
-                usleep(2000);
-            }
-            /* Overwrite the full row */
-            lcd_write(ctx, ctx->buf[r], CPANEL_COLS);
-            usleep(3000);
-            memcpy(ctx->prev[r], ctx->buf[r], CPANEL_COLS);
-        }
-    }
+    memcpy(ctx->prev, ctx->buf, sizeof(ctx->prev));
+    ctx->dirty = 0;
     return 0;
 }
 
