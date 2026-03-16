@@ -151,19 +151,38 @@ int cpanel_flush(cpanel_t *ctx)
     return 0;
 }
 
-/* ── Read ──────────────────────────────────────────────────────────── */
+/* ── Buttons ───────────────────────────────────────────────────────── */
 
-int cpanel_read(cpanel_t *ctx, uint8_t *buf, int max, int timeout_ms)
+/*
+ * Poll for a button press. Returns button code (CPANEL_BTN_*) or 0 if
+ * no button pressed within timeout_ms. Buttons auto-repeat while held.
+ */
+int cpanel_btn_poll(cpanel_t *ctx, int timeout_ms)
 {
     struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
-    int total = 0, idle = 0;
-    while (idle < timeout_ms && total < max) {
+    int elapsed = 0;
+    while (elapsed < timeout_ms) {
         int r = poll(&pfd, 1, 50);
         if (r > 0 && (pfd.revents & POLLIN)) {
-            int n = read(ctx->fd, buf + total, max - total);
-            if (n > 0) { total += n; idle = 0; }
-            else idle += 50;
-        } else idle += 50;
+            uint8_t b;
+            if (read(ctx->fd, &b, 1) == 1 && b >= 0x41 && b <= 0x47)
+                return b;
+        }
+        elapsed += 50;
     }
-    return total;
+    return 0;
+}
+
+const char *cpanel_btn_name(uint8_t btn)
+{
+    switch (btn) {
+    case CPANEL_BTN_HELP:  return "?";
+    case CPANEL_BTN_LEFT:  return "LEFT";
+    case CPANEL_BTN_ESC:   return "ESC";
+    case CPANEL_BTN_UP:    return "UP";
+    case CPANEL_BTN_ENTER: return "ENTER";
+    case CPANEL_BTN_DOWN:  return "DOWN";
+    case CPANEL_BTN_RIGHT: return "RIGHT";
+    default:               return NULL;
+    }
 }

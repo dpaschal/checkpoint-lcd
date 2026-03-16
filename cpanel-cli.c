@@ -196,15 +196,38 @@ static int cmd_monitor(void)
     cpanel_init(&lcd);
 
     int page = 0;
-    time_t last_switch = time(NULL);
+    int num_pages = 4;
+    time_t last_auto = time(NULL);
 
     while (running) {
         time_t now = time(NULL);
         struct tm *tm = localtime(&now);
 
-        if (now - last_switch >= 5) {
-            page = (page + 1) % 3;
-            last_switch = now;
+        /* Auto-rotate every 8 seconds */
+        if (now - last_auto >= 8) {
+            page = (page + 1) % num_pages;
+            last_auto = now;
+        }
+
+        /* Check buttons (non-blocking, 200ms) */
+        int btn = cpanel_btn_poll(&lcd, 200);
+        if (btn) {
+            last_auto = now; /* reset auto-rotate on any press */
+            switch (btn) {
+            case CPANEL_BTN_RIGHT:
+            case CPANEL_BTN_DOWN:
+                page = (page + 1) % num_pages;
+                break;
+            case CPANEL_BTN_LEFT:
+            case CPANEL_BTN_UP:
+                page = (page + num_pages - 1) % num_pages;
+                break;
+            case CPANEL_BTN_ESC:
+                running = 0;
+                break;
+            }
+            /* Drain repeat keypresses */
+            while (cpanel_btn_poll(&lcd, 100)) ;
         }
 
         cpanel_clear(&lcd);
@@ -221,35 +244,43 @@ static int cmd_monitor(void)
             cpanel_puts(&lcd, 3, "================");
             cpanel_puts(&lcd, 4, "LAN 192.168.1.1");
             cpanel_puts(&lcd, 5, "WRK 192.168.10.1");
-            cpanel_puts(&lcd, 6, "WAN not connected");
-            cpanel_printf(&lcd, 7, "Page 1/3  [%c]",
-                          "|/-\\"[(int)now % 4]);
+            cpanel_puts(&lcd, 6, "");
+            cpanel_printf(&lcd, 7, "[<] Page 1/%d [>]", num_pages);
             break;
         }
         case 1:
             cpanel_puts(&lcd, 0, "=== Interfaces =");
-            cpanel_puts(&lcd, 1, "em0 WAN    down");
+            cpanel_puts(&lcd, 1, "em0 WAN    up");
             cpanel_puts(&lcd, 2, "em1 LAN    up");
             cpanel_puts(&lcd, 3, "em2 LAN    up");
             cpanel_puts(&lcd, 4, "em3 LAN    up");
-            cpanel_puts(&lcd, 5, "em4 LAN    up");
-            cpanel_puts(&lcd, 6, "em5 LAN    up");
-            cpanel_puts(&lcd, 7, "Page 2/3");
+            cpanel_puts(&lcd, 5, "em4-em7    up");
+            cpanel_puts(&lcd, 6, "");
+            cpanel_printf(&lcd, 7, "[<] Page 2/%d [>]", num_pages);
             break;
         case 2:
             cpanel_puts(&lcd, 0, "=== Hardware ===");
             cpanel_puts(&lcd, 1, "CPU:  i5-750");
-            cpanel_puts(&lcd, 2, "RAM:  9216 MB");
-            cpanel_puts(&lcd, 3, "SSD:  2x 480GB");
-            cpanel_puts(&lcd, 4, "NIC:  8x GbE");
-            cpanel_puts(&lcd, 5, "");
-            cpanel_puts(&lcd, 6, "Check Point P-210");
-            cpanel_puts(&lcd, 7, "Page 3/3");
+            cpanel_puts(&lcd, 2, "Cores: 4 @2.67GHz");
+            cpanel_puts(&lcd, 3, "RAM:  9216 MB");
+            cpanel_puts(&lcd, 4, "SSD:  2x 480GB");
+            cpanel_puts(&lcd, 5, "NIC:  8x GbE");
+            cpanel_puts(&lcd, 6, "LCD:  EZIO-G500");
+            cpanel_printf(&lcd, 7, "[<] Page 3/%d [>]", num_pages);
+            break;
+        case 3:
+            cpanel_puts(&lcd, 0, "=== Controls ===");
+            cpanel_puts(&lcd, 1, "</>  Prev/Next pg");
+            cpanel_puts(&lcd, 2, "UP/DN  Same");
+            cpanel_puts(&lcd, 3, "ESC    Exit");
+            cpanel_puts(&lcd, 4, "ENTER  (future)");
+            cpanel_puts(&lcd, 5, "?      Help");
+            cpanel_puts(&lcd, 6, "");
+            cpanel_printf(&lcd, 7, "[<] Page 4/%d [>]", num_pages);
             break;
         }
 
         cpanel_flush(&lcd);
-        sleep(1);
     }
 
     cpanel_clear(&lcd);

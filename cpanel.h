@@ -31,6 +31,15 @@
 #define CPANEL_NEWLINE   0x0A   /* line feed = next row */
 #define CPANEL_GFX_MODE  0x47   /* ESC G = enter graphics mode */
 
+/* Button codes (received via serial when pressed, A-G sequential) */
+#define CPANEL_BTN_HELP   0x41  /* ? button */
+#define CPANEL_BTN_LEFT   0x42
+#define CPANEL_BTN_ESC    0x43
+#define CPANEL_BTN_UP     0x44
+#define CPANEL_BTN_ENTER  0x45
+#define CPANEL_BTN_DOWN   0x46
+#define CPANEL_BTN_RIGHT  0x47
+
 typedef struct {
     int   fd;
     char  dev[128];
@@ -49,7 +58,8 @@ int   cpanel_printf(cpanel_t *ctx, int row, const char *fmt, ...)
       __attribute__((format(printf, 3, 4)));
 int   cpanel_flush(cpanel_t *ctx);
 
-/* Buttons (read from serial) */
-int   cpanel_read(cpanel_t *ctx, uint8_t *buf, int max, int timeout_ms);
+/* Buttons (received via serial, auto-repeat while held) */
+int   cpanel_btn_poll(cpanel_t *ctx, int timeout_ms);
+const char *cpanel_btn_name(uint8_t btn);
 
 #endif
