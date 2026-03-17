@@ -1,5 +1,26 @@
 # checkpoint-lcd
 
+<p align="center">
+  <a href="https://buymeacoffee.com/dpaschal">
+    <img src="https://img.shields.io/badge/❤️🎆_THANKS!_🎆❤️-Support_This_Project-ff0000?style=for-the-badge" alt="Thanks!" height="40">
+  </a>
+</p>
+
+<p align="center">
+  <b>☕ Buy me Claude Code credits or support a project! ☕</b>
+</p>
+<p align="center">
+  <i>Every donation keeps the code flowing — these tools are built with your support.</i>
+</p>
+
+<p align="center">
+  <a href="https://buymeacoffee.com/dpaschal">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" height="50">
+  </a>
+</p>
+
+---
+
 **LCD panel driver for Check Point P-210/12200 firewall appliances running OPNsense/FreeBSD.**
 
 Reverse-engineered the Portwell EZIO-G500 front panel LCD on the Check Point P-210 (model 12200). This is the first open-source driver that actually controls the LCD on these appliances when running alternative firmware like OPNsense.
